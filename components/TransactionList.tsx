@@ -30,18 +30,85 @@ const TransactionList: React.FC<TransactionListProps> = ({ transactions, onDelet
 
   if (transactions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-slate-400 bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
-        <div className="bg-slate-50 p-8 rounded-full mb-6 text-4xl">🧾</div>
-        <p className="text-sm font-bold text-slate-800">ยังไม่มีประวัติรายการ</p>
-        <p className="text-[11px] mt-2 opacity-60 max-w-[200px] text-center leading-relaxed">
-          เริ่มบันทึกรายการด้วยการสแกนสลิป หรือเช็คอินแขกด้วยการสแกนบัตรประชาชน
-        </p>
+      <div className="space-y-6 animate-in fade-in duration-700">
+        {/* Header */}
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Financial Transactions</h2>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">รายรับ-รายจ่ายทั้งหมด</p>
+            </div>
+            <div className="bg-slate-50 text-slate-400 px-5 py-2.5 rounded-2xl text-[11px] font-black flex items-center gap-2">
+              <span>ทั้งหมด:</span>
+              <span className="text-slate-800">0 รายการ</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        <div className="flex flex-col items-center justify-center py-24 text-slate-400 bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
+          <div className="bg-slate-50 p-8 rounded-full mb-6 text-4xl">🧾</div>
+          <p className="text-sm font-bold text-slate-800">ยังไม่มีประวัติรายการ</p>
+          <p className="text-[11px] mt-2 opacity-60 max-w-[280px] text-center leading-relaxed">
+            เริ่มบันทึกรายการด้วยวิธีใดวิธีหนึ่ง:
+          </p>
+          <div className="mt-6 space-y-2 text-[11px] text-slate-500">
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-500">✓</span>
+              <span>สแกนสลิปรับเงินจากหน้า Dashboard</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-500">✓</span>
+              <span>เช็คอินแขกจากหน้า Front Desk</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-500">✓</span>
+              <span>ลงบันทึกรับเงินจาก PMS Sync</span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
+  const totalIncome = transactions.filter(t => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
+  const totalExpense = transactions.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
+  const netBalance = totalIncome - totalExpense;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-700">
+      {/* Header with Summary */}
+      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Financial Transactions</h2>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">รายรับ-รายจ่ายทั้งหมด</p>
+          </div>
+          <div className="bg-slate-50 text-slate-400 px-5 py-2.5 rounded-2xl text-[11px] font-black flex items-center gap-2">
+            <span>ทั้งหมด:</span>
+            <span className="text-slate-800">{transactions.length} รายการ</span>
+          </div>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+            <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">รายรับทั้งหมด</p>
+            <p className="text-xl font-black text-emerald-600">฿{totalIncome.toLocaleString()}</p>
+          </div>
+          <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100">
+            <p className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-1">รายจ่ายทั้งหมด</p>
+            <p className="text-xl font-black text-rose-600">฿{totalExpense.toLocaleString()}</p>
+          </div>
+          <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+            <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1">ยอดสุทธิ</p>
+            <p className={`text-xl font-black ${netBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              {netBalance >= 0 ? '+' : ''}฿{netBalance.toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Dynamic Search Box */}
       <div className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-4">
         <div className="relative">
