@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Booking, Transaction, TransactionType, Category } from '../types';
+import GmailSync from './GmailSync';
 
 // Fixed: Added onUpdateBooking to PMSIntegrationProps to match usage in App.tsx
 interface PMSIntegrationProps {
@@ -8,6 +9,7 @@ interface PMSIntegrationProps {
   transactions: Transaction[];
   onAddTransaction: (t: Omit<Transaction, 'id'>) => void;
   onUpdateBooking: (id: string, updates: Partial<Booking>) => void;
+  onImportBooking?: (booking: Omit<Booking, 'id' | 'status'>) => void;
 }
 
 const CountdownTimer: React.FC<{ expiry: string }> = ({ expiry }) => {
@@ -32,7 +34,7 @@ const CountdownTimer: React.FC<{ expiry: string }> = ({ expiry }) => {
   return <span className="font-black text-amber-600">{timeLeft}</span>;
 };
 
-const PMSIntegration: React.FC<PMSIntegrationProps> = ({ bookings, transactions, onAddTransaction }) => {
+const PMSIntegration: React.FC<PMSIntegrationProps> = ({ bookings, transactions, onAddTransaction, onImportBooking }) => {
   const isPaid = (bookingId: string) => {
     return transactions.some(tx => tx.description.includes(bookingId) && tx.type === TransactionType.INCOME);
   };
@@ -75,8 +77,19 @@ const PMSIntegration: React.FC<PMSIntegrationProps> = ({ bookings, transactions,
     }
   };
 
+  const handleBookingImport = (booking: Omit<Booking, 'id' | 'status'>) => {
+    if (onImportBooking) {
+      onImportBooking(booking);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Gmail Auto-Import Section */}
+      {onImportBooking && (
+        <GmailSync onBookingImported={handleBookingImport} />
+      )}
+
       <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
         <div className="flex justify-between items-center mb-10">
           <div>

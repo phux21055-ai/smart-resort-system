@@ -92,3 +92,24 @@ export interface OCRResult {
   description: string;
   confidence: number;
 }
+
+export interface EmailBookingData {
+  subject: string;
+  body: string;
+  from: string;
+  date: string;
+  attachments?: string[];
+}
+
+export interface ParsedBooking {
+  guestName: string;
+  roomNumber?: string;
+  checkIn: string;
+  checkOut: string;
+  totalAmount: number;
+  confirmationNumber: string;
+  otaChannel: string;
+  phone?: string;
+  email?: string;
+  nights?: number;
+}

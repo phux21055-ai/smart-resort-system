@@ -198,7 +198,14 @@ const App: React.FC = () => {
         {view === 'frontdesk' && <FrontDesk onCheckIn={handleFrontDeskCheckIn} onQuickBooking={() => {}} resortInfo={settings} />}
         {view === 'transactions' && <TransactionList transactions={transactions} onDelete={deleteTransaction} onReconcile={toggleReconcile} onViewImage={setSelectedImage} />}
         {view === 'archive' && <CloudArchive transactions={transactions} onViewImage={setSelectedImage} />}
-        {view === 'pms' && <PMSIntegration bookings={bookings} transactions={transactions} onAddTransaction={addTransaction} onUpdateBooking={() => {}} />}
+        {view === 'pms' && <PMSIntegration bookings={bookings} transactions={transactions} onAddTransaction={addTransaction} onUpdateBooking={() => {}} onImportBooking={(booking) => {
+          const newBooking: Booking = {
+            ...booking,
+            id: `BK${Date.now()}`,
+            status: 'confirmed'
+          };
+          setBookings(prev => [newBooking, ...prev]);
+        }} />}
         {view === 'settings' && <Settings settings={settings} onUpdate={setSettings} onClearData={() => { setTransactions([]); setBookings([]); }} />}
       </main>
 
