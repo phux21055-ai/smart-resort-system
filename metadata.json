@@ -1,0 +1,7 @@
+{
+  "name": "Smart Resort Accounting (OCR)",
+  "description": "A comprehensive accounting system for small resorts (15 rooms) featuring OCR-powered receipt scanning, expense categorization, and financial dashboards.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
