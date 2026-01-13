@@ -27,6 +27,12 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [showDoc, setShowDoc] = useState<'NONE' | 'RR3' | 'RECEIPT' | 'TAX_INVOICE'>('NONE');
+  const [inputMode, setInputMode] = useState<'SCAN' | 'MANUAL'>('SCAN');
+
+  // Manual input fields
+  const [manualFirstName, setManualFirstName] = useState('');
+  const [manualLastName, setManualLastName] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
   
   const [roomNumber, setRoomNumber] = useState('');
   const [extraGuests, setExtraGuests] = useState(0);
@@ -66,6 +72,32 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
     }
   };
 
+  const handleManualSubmit = () => {
+    if (!manualFirstName || !manualLastName) {
+      toast.error("กรุณากรอกชื่อ-นามสกุล");
+      return;
+    }
+
+    const manualGuest: GuestData = {
+      idNumber: '-',
+      title: '',
+      firstNameTH: manualFirstName,
+      lastNameTH: manualLastName,
+      firstNameEN: '',
+      lastNameEN: '',
+      address: '',
+      dob: '',
+      issueDate: '',
+      expiryDate: '',
+      phone: manualPhone,
+      customerType: CustomerType.CHECK_IN
+    };
+
+    setGuest(manualGuest);
+    setInputMode('SCAN'); // Switch back to show guest info
+    toast.success("บันทึกข้อมูลแขกสำเร็จ");
+  };
+
   const handleCompleteCheckIn = () => {
     if (!guest || !roomNumber || totalAmount <= 0) {
       toast.error("กรุณากรอกข้อมูลให้ครบถ้วน");
@@ -74,12 +106,15 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
     onCheckIn({
       guest, room: roomNumber, amount: totalAmount,
       description,
-      customerType: CustomerType.CHECK_IN, 
-      checkIn: checkInDate, 
+      customerType: CustomerType.CHECK_IN,
+      checkIn: checkInDate,
       checkOut: checkOutDate
     });
     setGuest(null);
     setRoomNumber('');
+    setManualFirstName('');
+    setManualLastName('');
+    setManualPhone('');
     toast.success("เช็คอินเรียบร้อย");
   };
 
@@ -98,17 +133,41 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
         </div>
 
         <div className="space-y-8">
-          <div className="flex flex-wrap gap-3">
-            <button onClick={() => setIsCameraOpen(true)} className="bg-indigo-600 text-white px-6 py-4 rounded-2xl text-xs font-black shadow-xl hover:bg-indigo-700 transition-all flex items-center gap-3">📸 สแกนบัตรประชาชน</button>
-            <button onClick={() => fileInputRef.current?.click()} className="bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl text-xs font-black hover:bg-slate-200 transition-all">📁 อัปโหลดรูป</button>
-            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => handleOCRResult((ev.target?.result as string).split(',')[1]);
-                reader.readAsDataURL(file);
-              }
-            }} />
+          {/* Input Mode Toggle */}
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+              <button
+                onClick={() => setInputMode('SCAN')}
+                className={`px-6 py-2.5 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${
+                  inputMode === 'SCAN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'
+                }`}
+              >
+                📸 สแกนบัตร
+              </button>
+              <button
+                onClick={() => setInputMode('MANUAL')}
+                className={`px-6 py-2.5 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${
+                  inputMode === 'MANUAL' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400'
+                }`}
+              >
+                ✍️ กรอกเอง
+              </button>
+            </div>
+
+            {inputMode === 'SCAN' && (
+              <>
+                <button onClick={() => setIsCameraOpen(true)} className="bg-indigo-600 text-white px-6 py-4 rounded-2xl text-xs font-black shadow-xl hover:bg-indigo-700 transition-all flex items-center gap-3">📸 เปิดกล้อง</button>
+                <button onClick={() => fileInputRef.current?.click()} className="bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl text-xs font-black hover:bg-slate-200 transition-all">📁 อัปโหลดรูป</button>
+                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => handleOCRResult((ev.target?.result as string).split(',')[1]);
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+              </>
+            )}
           </div>
 
           {isScanning ? (
@@ -117,27 +176,110 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
               <div className="lg:col-span-3 bg-slate-50 p-8 rounded-[2.5rem] space-y-6">
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ข้อมูลผู้เข้าพัก</h4>
-                {guest ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2 space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase">ชื่อ-นามสกุล</label>
-                      <input value={`${guest.title}${guest.firstNameTH} ${guest.lastNameTH}`} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
+
+                {/* Manual Input Form */}
+                {inputMode === 'MANUAL' && !guest ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase">ชื่อ *</label>
+                        <input
+                          type="text"
+                          placeholder="กรอกชื่อ"
+                          value={manualFirstName}
+                          onChange={(e) => setManualFirstName(e.target.value)}
+                          className="w-full p-4 bg-white rounded-2xl font-bold border-2 border-slate-200 focus:border-emerald-500 outline-none transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase">นามสกุล *</label>
+                        <input
+                          type="text"
+                          placeholder="กรอกนามสกุล"
+                          value={manualLastName}
+                          onChange={(e) => setManualLastName(e.target.value)}
+                          className="w-full p-4 bg-white rounded-2xl font-bold border-2 border-slate-200 focus:border-emerald-500 outline-none transition-colors"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase">เลขบัตรประชาชน</label>
-                      <input value={guest.idNumber} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
+                      <label className="text-[9px] font-black text-slate-400 uppercase">เบอร์โทรศัพท์</label>
+                      <input
+                        type="tel"
+                        placeholder="081-234-5678"
+                        value={manualPhone}
+                        onChange={(e) => setManualPhone(e.target.value)}
+                        className="w-full p-4 bg-white rounded-2xl font-bold border-2 border-slate-200 focus:border-emerald-500 outline-none transition-colors"
+                      />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase">วันเกิด</label>
-                      <input value={guest.dob} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
+                    <button
+                      onClick={handleManualSubmit}
+                      className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
+                    >
+                      ✓ บันทึกข้อมูลแขก
+                    </button>
+                  </div>
+                ) : guest ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-2">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        ข้อมูลพร้อมใช้งาน
+                      </span>
+                      <button
+                        onClick={() => {
+                          setGuest(null);
+                          setInputMode('MANUAL');
+                        }}
+                        className="text-[9px] font-black text-slate-400 hover:text-indigo-600 uppercase"
+                      >
+                        ✏️ แก้ไข
+                      </button>
                     </div>
-                    <div className="col-span-2 space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase">ที่อยู่</label>
-                      <textarea value={guest.address} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm h-24" readOnly />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2 space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase">ชื่อ-นามสกุล</label>
+                        <input value={`${guest.title}${guest.firstNameTH} ${guest.lastNameTH}`} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
                     </div>
+                    </div>
+                    {guest.phone && (
+                      <div className="col-span-2 space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase">เบอร์โทรศัพท์</label>
+                        <input value={guest.phone} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
+                      </div>
+                    )}
+                    {guest.idNumber !== '-' && (
+                      <div className="col-span-2 grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase">เลขบัตรประชาชน</label>
+                          <input value={guest.idNumber} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase">วันเกิด</label>
+                          <input value={guest.dob} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase">ที่อยู่</label>
+                          <textarea value={guest.address} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm h-24" readOnly />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="py-12 text-center text-slate-300 italic">กรุณาสแกนบัตรประชาชนเพื่อดึงข้อมูล</div>
+                  <div className="py-12 text-center">
+                    {inputMode === 'SCAN' ? (
+                      <>
+                        <div className="bg-indigo-50 w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">📸</div>
+                        <p className="text-slate-400 font-bold text-sm">กรุณาสแกนบัตรประชาชนเพื่อดึงข้อมูล</p>
+                        <p className="text-slate-300 text-xs mt-2">หรือเลือก "✍️ กรอกเอง" ด้านบน</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="bg-emerald-50 w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">✍️</div>
+                        <p className="text-slate-400 font-bold text-sm">กรอกข้อมูลแขกด้านบน</p>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
 
