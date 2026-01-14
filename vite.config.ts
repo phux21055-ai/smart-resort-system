@@ -18,6 +18,28 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: (id) => {
+              if (id.includes('node_modules')) {
+                // Group AI vendor separately
+                if (id.includes('@google/generative-ai')) {
+                  return 'vendor-ai';
+                }
+                // Group calendar vendor separately
+                if (id.includes('@fullcalendar')) {
+                  return 'vendor-calendar';
+                }
+                // Group React and all React-dependent libs together to avoid circular deps
+                if (id.includes('react') || id.includes('recharts')) {
+                  return 'vendor-react';
+                }
+              }
+            }
+          }
+        }
       }
     };
 });
