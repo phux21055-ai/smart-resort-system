@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
 import interactionPlugin from '@fullcalendar/interaction';
-import { DEFAULT_ROOM_TYPES } from '../config/rooms';
+import { DEFAULT_ROOM_TYPES } from '../../config/rooms';
 import toast from 'react-hot-toast';
 // Fixed: Added missing import for Booking type
 import { Booking } from '../../types';

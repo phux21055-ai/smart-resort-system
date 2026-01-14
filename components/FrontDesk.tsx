@@ -460,7 +460,7 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, resortInfo }) => {
                       <div className="space-y-2 py-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-400">{roomType?.name || 'ค่าที่พัก'}</span>
-                          <span>฿{((roomType?.price || 0) * nights).toLocaleString()}</span>
+                          <span>฿{((roomType?.pricePerNight || 0) * nights).toLocaleString()}</span>
                         </div>
                         {extraGuests > 0 && (
                             <div className="flex justify-between text-sm">
