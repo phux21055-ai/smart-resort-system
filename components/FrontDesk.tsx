@@ -1,28 +1,19 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { processIDCardOCR } from '../services/geminiService';
-import { GuestData, TransactionType, Category, CustomerType, Booking } from '../types';
+import { GuestData, CustomerType, Booking } from '../types';
+import { Camera, FileUp, CreditCard, BedDouble, Calendar, Users, Printer, X, CheckCircle2, Edit3 } from 'lucide-react';
 import PrintableDocument from './PrintableDocument';
 import CameraCapture from './CameraCapture';
 import toast from 'react-hot-toast';
-import { getRoomTypeByNumber, calculateNights, calculateTotalAmount, EXTRA_GUEST_PRICE } from '../config/rooms';
+import { getRoomTypeByNumber, calculateNights, calculateTotalAmount } from '../config/rooms';
 
 interface FrontDeskProps {
-  onCheckIn: (data: { 
-    guest: GuestData, 
-    amount: number, 
-    room: string, 
-    description: string, 
-    customerType: CustomerType,
-    checkIn: string,
-    checkOut: string
-  }) => void;
+  onCheckIn: (data: any) => void;
   onQuickBooking: (booking: Omit<Booking, 'id' | 'status'>) => void;
   resortInfo: any;
 }
 
-const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resortInfo }) => {
-  const [mode, setMode] = useState<'CHECKIN' | 'QUICKBOOK'>('CHECKIN');
 const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, resortInfo }) => {
   const [guest, setGuest] = useState<GuestData | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -143,251 +134,428 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, resortInfo }) => {
     setScanTimestamp('');
   };
 
+  const handleCheckIn = () => {
     if (!guest || !roomNumber || totalAmount <= 0) {
       toast.error("กรุณากรอกข้อมูลให้ครบถ้วน");
       return;
     }
+
+    // คำนวณยอดรวม รวมค่ามัดจำกุญแจ
+    const grandTotal = totalAmount + keyDeposit;
+
     onCheckIn({
-      guest, room: roomNumber, amount: totalAmount,
-      description,
+      guest,
+      room: roomNumber,
+      amount: totalAmount,
+      keyDeposit: keyDeposit,
+      grandTotal: grandTotal,
+      description: `${description} + มัดจำกุญแจ ฿${keyDeposit}`,
       customerType: CustomerType.CHECK_IN,
       checkIn: checkInDate,
-      checkOut: checkOutDate
+      checkOut: checkOutDate,
+      scanTimestamp: scanTimestamp,
+      nights: nights
     });
-    setGuest(null);
-    setRoomNumber('');
-    setManualFirstName('');
-    setManualLastName('');
-    setManualPhone('');
-    toast.success("เช็คอินเรียบร้อย");
+
+    handleReset();
+    toast.success("เช็คอินเรียบร้อย ✓");
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
-          <div>
-            <h2 className="text-2xl font-black text-slate-800">ระบบฟรอนต์เดสก์</h2>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Check-in Management</p>
-          </div>
-          <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-            <button onClick={() => setMode('CHECKIN')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black transition-all ${mode === 'CHECKIN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'}`}>🛎️ เช็คอินแขก</button>
-            <button onClick={() => setMode('QUICKBOOK')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black transition-all ${mode === 'QUICKBOOK' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'}`}>📞 จองด่วน</button>
-          </div>
+      <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
+
+        {/* Header */}
+        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Front Desk</h1>
+          <p className="text-slate-400 font-medium">จัดการการลงทะเบียนผู้เข้าพักและออกเอกสาร</p>
         </div>
 
-        <div className="space-y-8">
-          {/* Input Mode Toggle */}
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          {/* Left: Guest Info */}
+          <div className="lg:col-span-7 space-y-6">
+
+            {/* Input Mode Toggle */}
+            <div className="flex gap-3">
               <button
-                onClick={() => setInputMode('SCAN')}
-                className={`px-6 py-2.5 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${
-                  inputMode === 'SCAN' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'
-                }`}
+                  onClick={() => setInputMode('SCAN')}
+                  className={`flex-1 py-4 px-6 rounded-2xl font-bold transition-all ${inputMode === 'SCAN' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200'}`}
               >
-                📸 สแกนบัตร
+                📸 สแกนบัตรประชาชน
               </button>
               <button
-                onClick={() => setInputMode('MANUAL')}
-                className={`px-6 py-2.5 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${
-                  inputMode === 'MANUAL' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400'
-                }`}
+                  onClick={() => setInputMode('MANUAL')}
+                  className={`flex-1 py-4 px-6 rounded-2xl font-bold transition-all ${inputMode === 'MANUAL' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-200'}`}
               >
-                ✍️ กรอกเอง
+                ✍️ กรอกข้อมูลมือ
               </button>
             </div>
 
-            {inputMode === 'SCAN' && (
-              <>
-                <button onClick={() => setIsCameraOpen(true)} className="bg-indigo-600 text-white px-6 py-4 rounded-2xl text-xs font-black shadow-xl hover:bg-indigo-700 transition-all flex items-center gap-3">📸 เปิดกล้อง</button>
-                <button onClick={() => fileInputRef.current?.click()} className="bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl text-xs font-black hover:bg-slate-200 transition-all">📁 อัปโหลดรูป</button>
-                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => handleOCRResult((ev.target?.result as string).split(',')[1]);
-                    reader.readAsDataURL(file);
-                  }
-                }} />
-              </>
-            )}
-          </div>
-
-          {isScanning ? (
-            <div className="py-20 text-center bg-indigo-50/50 rounded-[3rem] animate-pulse"><p className="text-indigo-600 font-black">AI กำลังอ่านข้อมูล...</p></div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-              <div className="lg:col-span-3 bg-slate-50 p-8 rounded-[2.5rem] space-y-6">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ข้อมูลผู้เข้าพัก</h4>
-
-                {/* Manual Input Form */}
-                {inputMode === 'MANUAL' && !guest ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase">ชื่อ *</label>
-                        <input
-                          type="text"
-                          placeholder="กรอกชื่อ"
-                          value={manualFirstName}
-                          onChange={(e) => setManualFirstName(e.target.value)}
-                          className="w-full p-4 bg-white rounded-2xl font-bold border-2 border-slate-200 focus:border-emerald-500 outline-none transition-colors"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase">นามสกุล *</label>
-                        <input
-                          type="text"
-                          placeholder="กรอกนามสกุล"
-                          value={manualLastName}
-                          onChange={(e) => setManualLastName(e.target.value)}
-                          className="w-full p-4 bg-white rounded-2xl font-bold border-2 border-slate-200 focus:border-emerald-500 outline-none transition-colors"
-                        />
-                      </div>
+            {/* Scan Mode */}
+            {inputMode === 'SCAN' && !guest && (
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                      onClick={() => setIsCameraOpen(true)}
+                      className="group bg-indigo-600 hover:bg-indigo-700 p-8 rounded-3xl text-white transition-all shadow-lg flex flex-col items-center gap-3 border-b-4 border-indigo-800"
+                  >
+                    <div className="bg-indigo-500/50 p-4 rounded-2xl group-hover:scale-110 transition-transform">
+                      <Camera size={32} />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase">เบอร์โทรศัพท์</label>
+                    <span className="font-bold text-lg">เปิดกล้อง</span>
+                  </button>
+
+                  <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="group bg-white hover:bg-slate-50 p-8 rounded-3xl text-slate-700 transition-all border-2 border-slate-200 flex flex-col items-center gap-3"
+                  >
+                    <div className="bg-slate-100 p-4 rounded-2xl group-hover:scale-110 transition-transform text-slate-500">
+                      <FileUp size={32} />
+                    </div>
+                    <span className="font-bold text-lg text-slate-600">เลือกไฟล์</span>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => handleOCRResult((ev.target?.result as string).split(',')[1]);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                    />
+                  </button>
+                </div>
+            )}
+
+            {/* Manual Mode */}
+            {inputMode === 'MANUAL' && !guest && (
+                <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                      <Edit3 size={20} />
+                    </div>
+                    <h3 className="font-bold text-slate-700">กรอกข้อมูลแขกด้วยตนเอง</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 ml-1">ชื่อ-นามสกุล *</label>
                       <input
-                        type="tel"
-                        placeholder="081-234-5678"
-                        value={manualPhone}
-                        onChange={(e) => setManualPhone(e.target.value)}
-                        className="w-full p-4 bg-white rounded-2xl font-bold border-2 border-slate-200 focus:border-emerald-500 outline-none transition-colors"
+                          type="text"
+                          placeholder="นาย สมชาย ใจดี"
+                          value={manualName}
+                          onChange={(e) => setManualName(e.target.value)}
+                          className="w-full mt-1 p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold focus:border-emerald-500 outline-none transition-colors"
                       />
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-400 ml-1">เบอร์โทร</label>
+                        <input
+                            type="tel"
+                            placeholder="081-234-5678"
+                            value={manualPhone}
+                            onChange={(e) => setManualPhone(e.target.value)}
+                            className="w-full mt-1 p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold focus:border-emerald-500 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-400 ml-1">สัญชาติ</label>
+                        <input
+                            type="text"
+                            placeholder="ไทย"
+                            value={manualNationality}
+                            onChange={(e) => setManualNationality(e.target.value)}
+                            className="w-full mt-1 p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold focus:border-emerald-500 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 ml-1">อาชีพ</label>
+                      <input
+                          type="text"
+                          placeholder="พนักงานบริษัท"
+                          value={manualOccupation}
+                          onChange={(e) => setManualOccupation(e.target.value)}
+                          className="w-full mt-1 p-4 bg-white border-2 border-slate-200 rounded-2xl font-bold focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+
                     <button
-                      onClick={handleManualSubmit}
-                      className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-xl hover:bg-emerald-700 transition-all active:scale-95"
+                        onClick={handleManualSubmit}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-black shadow-xl transition-all active:scale-95"
                     >
-                      ✓ บันทึกข้อมูลแขก
+                      ✓ บันทึกข้อมูล
                     </button>
                   </div>
-                ) : guest ? (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-2">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                        ข้อมูลพร้อมใช้งาน
-                      </span>
-                      <button
-                        onClick={() => {
-                          setGuest(null);
-                          setInputMode('MANUAL');
-                        }}
-                        className="text-[9px] font-black text-slate-400 hover:text-indigo-600 uppercase"
-                      >
-                        ✏️ แก้ไข
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="col-span-2 space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase">ชื่อ-นามสกุล</label>
-                        <input value={`${guest.title}${guest.firstNameTH} ${guest.lastNameTH}`} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
-                    </div>
-                    </div>
-                    {guest.phone && (
-                      <div className="col-span-2 space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase">เบอร์โทรศัพท์</label>
-                        <input value={guest.phone} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
-                      </div>
-                    )}
-                    {guest.idNumber !== '-' && (
-                      <div className="col-span-2 grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase">เลขบัตรประชาชน</label>
-                          <input value={guest.idNumber} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase">วันเกิด</label>
-                          <input value={guest.dob} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm" readOnly />
-                        </div>
-                        <div className="col-span-2 space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase">ที่อยู่</label>
-                          <textarea value={guest.address} className="w-full p-4 bg-white rounded-2xl font-bold border-none shadow-sm h-24" readOnly />
-                        </div>
-                      </div>
-                    )}
+                </div>
+            )}
+
+            {/* Guest Info Display */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
+              <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                    <CreditCard size={20} />
                   </div>
-                ) : (
-                  <div className="py-12 text-center">
-                    {inputMode === 'SCAN' ? (
-                      <>
-                        <div className="bg-indigo-50 w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">📸</div>
-                        <p className="text-slate-400 font-bold text-sm">กรุณาสแกนบัตรประชาชนเพื่อดึงข้อมูล</p>
-                        <p className="text-slate-300 text-xs mt-2">หรือเลือก "✍️ กรอกเอง" ด้านบน</p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="bg-emerald-50 w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">✍️</div>
-                        <p className="text-slate-400 font-bold text-sm">กรอกข้อมูลแขกด้านบน</p>
-                      </>
-                    )}
-                  </div>
+                  <h3 className="font-bold text-slate-700">ข้อมูลผู้เข้าพัก</h3>
+                </div>
+                {guest && (
+                    <button onClick={handleReset} className="text-xs font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1">
+                      <X size={14} /> ล้างข้อมูล
+                    </button>
                 )}
               </div>
 
-              <div className="lg:col-span-2 bg-indigo-600 rounded-[3rem] p-8 text-white flex flex-col gap-6">
-                <h4 className="font-black text-xl">รายละเอียดการเข้าพัก</h4>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-indigo-200">เลขห้อง</label>
-                      <input placeholder="เช่น 1, 2, 14" value={roomNumber} onChange={e => setRoomNumber(e.target.value)} className="w-full bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
+              <div className="p-8">
+                {isScanning ? (
+                    <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                      <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                      <p className="font-bold text-slate-500 animate-pulse">AI กำลังวิเคราะห์บัตรประชาชน...</p>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-indigo-200">เสริม (300/คน)</label>
-                      <input type="number" value={extraGuests} onChange={e => setExtraGuests(parseInt(e.target.value) || 0)} className="w-full bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-indigo-200">Check-in</label>
-                      <input type="date" value={checkInDate} onChange={e => setCheckInDate(e.target.value)} className="w-full bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-indigo-200">Check-out</label>
-                      <input type="date" value={checkOutDate} onChange={e => setCheckOutDate(e.target.value)} className="w-full bg-white/10 p-4 rounded-2xl text-xs font-bold border border-white/20" />
-                    </div>
-                  </div>
-                  
-                  {totalAmount > 0 && (
-                    <div className="bg-white/10 p-5 rounded-2xl border border-white/20 space-y-1">
-                      <p className="text-[10px] opacity-60 font-black uppercase tracking-widest">ยอดชำระสุทธิ</p>
-                      <p className="text-2xl font-black">฿{totalAmount.toLocaleString()}</p>
-                      <p className="text-[9px] opacity-80">{description}</p>
-                    </div>
-                  )}
+                ) : guest ? (
+                    <div className="grid grid-cols-2 gap-6 animate-in zoom-in-95 duration-300">
+                      {scanTimestamp && (
+                          <div className="col-span-2 bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-center gap-2">
+                            <div className="text-emerald-600 font-black text-xs">⏱️ บันทึกเมื่อ:</div>
+                            <div className="text-emerald-700 font-bold text-sm">{scanTimestamp}</div>
+                          </div>
+                      )}
 
-                  <button onClick={handleCompleteCheckIn} className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all">ยืนยันเช็คอิน</button>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                    <button onClick={() => setShowDoc('RR3')} className="bg-white/10 text-white p-2 rounded-xl text-[8px] font-black uppercase">ร.ร. 3</button>
-                    <button onClick={() => setShowDoc('RECEIPT')} className="bg-white/10 text-white p-2 rounded-xl text-[8px] font-black uppercase">มัดจำ</button>
-                    <button onClick={() => setShowDoc('TAX_INVOICE')} className="bg-white/10 text-white p-2 rounded-xl text-[8px] font-black uppercase">ใบเสร็จ</button>
+                      <div className="col-span-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">ชื่อ-นามสกุล</label>
+                        <div className="mt-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-800">
+                          {guest.title}{guest.firstNameTH} {guest.lastNameTH}
+                        </div>
+                      </div>
+
+                      {guest.idNumber !== '-' && (
+                          <div className="col-span-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">เลขประจำตัวประชาชน</label>
+                            <div className="mt-1 p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl font-mono font-bold text-indigo-700">
+                              {guest.idNumber}
+                            </div>
+                          </div>
+                      )}
+
+                      {guest.phone && (
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">เบอร์โทร</label>
+                            <div className="mt-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-600">
+                              {guest.phone}
+                            </div>
+                          </div>
+                      )}
+
+                      {guest.nationality && (
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">สัญชาติ</label>
+                            <div className="mt-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-600">
+                              {guest.nationality}
+                            </div>
+                          </div>
+                      )}
+
+                      {guest.occupation && (
+                          <div className="col-span-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">อาชีพ</label>
+                            <div className="mt-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-600">
+                              {guest.occupation}
+                            </div>
+                          </div>
+                      )}
+
+                      {guest.address && guest.idNumber !== '-' && (
+                          <div className="col-span-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">ที่อยู่ตามบัตร</label>
+                            <div className="mt-1 p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm leading-relaxed text-slate-600">
+                              {guest.address}
+                            </div>
+                          </div>
+                      )}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/30 text-slate-300">
+                      <CreditCard size={48} strokeWidth={1} />
+                      <p className="mt-4 font-bold uppercase tracking-wider text-xs">
+                        {inputMode === 'SCAN' ? 'เลือก "เปิดกล้อง" หรือ "เลือกไฟล์" ด้านบน' : 'กรอกข้อมูลในฟอร์มด้านบน'}
+                      </p>
+                    </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Booking Summary */}
+          <div className="lg:col-span-5">
+            <div className="bg-slate-900 rounded-[3rem] p-8 text-white shadow-2xl sticky top-6">
+              <h3 className="text-xl font-bold flex items-center gap-3 mb-8">
+                <BedDouble className="text-indigo-400" />
+                สรุปรายละเอียดการจอง
+              </h3>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 ml-1">เลขห้องพัก</label>
+                    <input
+                        placeholder="101"
+                        value={roomNumber}
+                        onChange={e => setRoomNumber(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 p-4 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 ml-1">เสริมผู้ใหญ่</label>
+                    <div className="relative">
+                      <input
+                          type="number"
+                          value={extraGuests}
+                          onChange={e => setExtraGuests(Number(e.target.value))}
+                          className="w-full bg-slate-800 border border-slate-700 p-4 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                      />
+                      <Users size={16} className="absolute right-4 top-5 text-slate-500" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 ml-1 flex items-center gap-1">
+                      <Calendar size={12} /> Check-in
+                    </label>
+                    <input
+                        type="date"
+                        value={checkInDate}
+                        onChange={e => setCheckInDate(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 p-4 rounded-2xl text-xs font-bold outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 ml-1 flex items-center gap-1">
+                      <Calendar size={12} /> Check-out
+                    </label>
+                    <input
+                        type="date"
+                        value={checkOutDate}
+                        onChange={e => setCheckOutDate(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 p-4 rounded-2xl text-xs font-bold outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Receipt Summary */}
+                {roomNumber && totalAmount > 0 && (
+                    <div className="bg-indigo-950/50 border border-indigo-900/50 rounded-[2rem] p-6 space-y-4">
+                      <div className="flex justify-between items-end border-b border-indigo-900/50 pb-4">
+                        <span className="text-sm font-bold text-indigo-300">รายละเอียดยอดรวม</span>
+                        <span className="text-xs bg-indigo-600 px-3 py-1 rounded-full">{nights} คืน</span>
+                      </div>
+
+                      <div className="space-y-2 py-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-400">{roomType?.name || 'ค่าที่พัก'}</span>
+                          <span>฿{((roomType?.price || 0) * nights).toLocaleString()}</span>
+                        </div>
+                        {extraGuests > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-400">เตียงเสริม (x{extraGuests})</span>
+                              <span>฿{(extraGuests * 300 * nights).toLocaleString()}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between text-sm border-t border-indigo-900/30 pt-2">
+                          <span className="text-slate-400">มัดจำกุญแจ</span>
+                          <span>฿{keyDeposit.toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center pt-2 border-t border-indigo-900/50">
+                          <span className="text-sm text-slate-400">ค่าที่พัก</span>
+                          <span className="text-lg font-bold text-white">฿{totalAmount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center pb-2">
+                          <span className="font-black text-emerald-400 text-lg">ยอดรวมทั้งหมด</span>
+                          <span className="text-3xl font-black text-emerald-400">฿{(totalAmount + keyDeposit).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                )}
+
+                {/* Actions */}
+                <div className="space-y-3 pt-4">
+                  <button
+                      disabled={!guest || !roomNumber}
+                      onClick={handleCheckIn}
+                      className={`w-full py-5 rounded-2xl font-black text-lg shadow-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${guest && roomNumber ? 'bg-indigo-500 text-white hover:bg-indigo-400' : 'bg-slate-800 text-slate-600 cursor-not-allowed'}`}
+                  >
+                    <CheckCircle2 size={24} />
+                    {!guest ? '① กรอกข้อมูลแขกก่อน' : !roomNumber ? '② กรอกเลขห้อง' : 'ยืนยันเช็คอิน'}
+                  </button>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                        onClick={() => setShowDoc('RR3')}
+                        disabled={!guest}
+                        className="flex flex-col items-center gap-1 py-3 bg-slate-800 hover:bg-slate-700 text-[9px] font-bold rounded-xl transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Printer size={16} /> ร.ร. ๓
+                    </button>
+                    <button
+                        onClick={() => setShowDoc('RECEIPT')}
+                        disabled={!guest}
+                        className="flex flex-col items-center gap-1 py-3 bg-slate-800 hover:bg-slate-700 text-[9px] font-bold rounded-xl transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Printer size={16} /> ใบมัดจำ
+                    </button>
+                    <button
+                        onClick={() => setShowDoc('TAX_INVOICE')}
+                        disabled={!guest}
+                        className="flex flex-col items-center gap-1 py-3 bg-slate-800 hover:bg-slate-700 text-[9px] font-bold rounded-xl transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <Printer size={16} /> ใบเสร็จ
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Camera Modal */}
+        {isCameraOpen && <CameraCapture onCapture={handleOCRResult} onClose={() => setIsCameraOpen(false)} />}
+
+        {/* Document Preview Modal */}
+        {showDoc !== 'NONE' && guest && (
+            <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-4" onClick={() => setShowDoc('NONE')}>
+              <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+                  <h3 className="font-black text-slate-800 uppercase tracking-tight">Document Preview</h3>
+                  <button onClick={() => setShowDoc('NONE')} className="text-slate-400 font-bold hover:text-slate-600 px-4 transition-colors">✕ ปิด</button>
+                </div>
+                <div className="flex-1 overflow-auto bg-slate-100/50 p-10 flex justify-center">
+                  <PrintableDocument
+                      guest={guest}
+                      type={showDoc}
+                      amount={totalAmount}
+                      roomNumber={roomNumber}
+                      description={description}
+                      resortInfo={resortInfo}
+                      checkInDate={checkInDate}
+                      checkOutDate={checkOutDate}
+                  />
                 </div>
               </div>
             </div>
-          )}
-        </div>
+        )}
       </div>
-
-      {isCameraOpen && <CameraCapture onCapture={handleOCRResult} onClose={() => setIsCameraOpen(false)} />}
-      
-      {showDoc !== 'NONE' && guest && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-4" onClick={() => setShowDoc('NONE')}>
-           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                 <h3 className="font-black text-slate-800 uppercase tracking-tight">Document Preview</h3>
-                 <button onClick={() => setShowDoc('NONE')} className="text-slate-400 font-bold hover:text-slate-600 px-4 transition-colors">✕ ปิด</button>
-              </div>
-              <div className="flex-1 overflow-auto bg-slate-100/50 p-10 flex justify-center">
-                 <PrintableDocument guest={guest} type={showDoc} amount={totalAmount} roomNumber={roomNumber} description={description} resortInfo={resortInfo} />
-              </div>
-           </div>
-        </div>
-      )}
-    </div>
   );
 };
 
