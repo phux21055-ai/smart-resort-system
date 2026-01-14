@@ -23,6 +23,7 @@ interface FrontDeskProps {
 
 const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resortInfo }) => {
   const [mode, setMode] = useState<'CHECKIN' | 'QUICKBOOK'>('CHECKIN');
+const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, resortInfo }) => {
   const [guest, setGuest] = useState<GuestData | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -30,10 +31,11 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
   const [inputMode, setInputMode] = useState<'SCAN' | 'MANUAL'>('SCAN');
 
   // Manual input fields
-  const [manualFirstName, setManualFirstName] = useState('');
-  const [manualLastName, setManualLastName] = useState('');
+  const [manualName, setManualName] = useState('');
   const [manualPhone, setManualPhone] = useState('');
-  
+  const [manualNationality, setManualNationality] = useState('ไทย');
+  const [manualOccupation, setManualOccupation] = useState('');
+
   const [roomNumber, setRoomNumber] = useState('');
   const [extraGuests, setExtraGuests] = useState(0);
   const [checkInDate, setCheckInDate] = useState(new Date().toISOString().split('T')[0]);
@@ -45,44 +47,72 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
 
   const [totalAmount, setTotalAmount] = useState(0);
   const [description, setDescription] = useState('');
+  const [keyDeposit] = useState(300); // ค่าบริการมัดจำกุญแจ
+  const [scanTimestamp, setScanTimestamp] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const roomType = getRoomTypeByNumber(roomNumber);
+  const nights = calculateNights(checkInDate, checkOutDate);
 
   useEffect(() => {
     if (roomNumber && checkInDate && checkOutDate) {
       const amount = calculateTotalAmount(roomNumber, checkInDate, checkOutDate, extraGuests);
-      const roomType = getRoomTypeByNumber(roomNumber);
-      const nights = calculateNights(checkInDate, checkOutDate);
-      
       setTotalAmount(amount);
       setDescription(`ค่าที่พัก ${roomType?.name || 'ห้อง ' + roomNumber} (${nights} คืน)${extraGuests > 0 ? ' + เสริม ' + extraGuests + ' ท่าน' : ''}`);
     }
-  }, [roomNumber, checkInDate, checkOutDate, extraGuests]);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  }, [roomNumber, checkInDate, checkOutDate, extraGuests, nights, roomType]);
 
   const handleOCRResult = async (base64Data: string) => {
     setIsScanning(true);
     try {
       const result = await processIDCardOCR(base64Data);
+
+      // บันทึกเวลาที่สแกน
+      const now = new Date();
+      const timestamp = now.toLocaleString('th-TH', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      setScanTimestamp(timestamp);
+
       setGuest(result);
-      toast.success("สแกนบัตรประชาชนสำเร็จ");
+      toast.success(`สแกนสำเร็จ: ${result.firstNameTH}`);
+      setInputMode('SCAN'); // Switch back to view mode
     } catch (err: any) {
-      toast.error(err.message || "สแกนไม่สำเร็จ กรุณาลองใหม่");
+      toast.error("สแกนไม่สำเร็จ กรุณาลองใหม่หรือกรอกมือ");
     } finally {
       setIsScanning(false);
+      setIsCameraOpen(false);
     }
   };
 
   const handleManualSubmit = () => {
-    if (!manualFirstName || !manualLastName) {
+    if (!manualName) {
       toast.error("กรุณากรอกชื่อ-นามสกุล");
       return;
     }
 
+    // บันทึกเวลาที่กรอกมือ
+    const now = new Date();
+    const timestamp = now.toLocaleString('th-TH', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    setScanTimestamp(timestamp);
+
     const manualGuest: GuestData = {
       idNumber: '-',
       title: '',
-      firstNameTH: manualFirstName,
-      lastNameTH: manualLastName,
+      firstNameTH: manualName,
+      lastNameTH: '',
       firstNameEN: '',
       lastNameEN: '',
       address: '',
@@ -90,15 +120,29 @@ const FrontDesk: React.FC<FrontDeskProps> = ({ onCheckIn, onQuickBooking, resort
       issueDate: '',
       expiryDate: '',
       phone: manualPhone,
+      nationality: manualNationality,
+      occupation: manualOccupation,
       customerType: CustomerType.CHECK_IN
     };
 
     setGuest(manualGuest);
-    setInputMode('SCAN'); // Switch back to show guest info
+    setInputMode('SCAN'); // Switch to view mode
     toast.success("บันทึกข้อมูลแขกสำเร็จ");
   };
 
-  const handleCompleteCheckIn = () => {
+  const handleReset = () => {
+    setGuest(null);
+    setRoomNumber('');
+    setExtraGuests(0);
+    setTotalAmount(0);
+    setManualName('');
+    setManualPhone('');
+    setManualNationality('ไทย');
+    setManualOccupation('');
+    setInputMode('SCAN');
+    setScanTimestamp('');
+  };
+
     if (!guest || !roomNumber || totalAmount <= 0) {
       toast.error("กรุณากรอกข้อมูลให้ครบถ้วน");
       return;
