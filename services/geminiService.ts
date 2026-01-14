@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { OCRResult, GuestData } from "../types";
 
 // Initialize AI
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAI = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const processReceiptOCR = async (base64Image: string, intent: 'INCOME' | 'EXPENSE' | 'GENERAL' = 'GENERAL'): Promise<OCRResult> => {
   const ai = getAI();
