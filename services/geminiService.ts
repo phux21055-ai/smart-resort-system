@@ -50,10 +50,14 @@ export const processIDCardOCR = async (base64Image: string): Promise<GuestData> 
   const ai = getAI();
   const model = 'gemini-3-flash-preview';
 
-  const systemInstruction = `Extract Thai National ID card information.
-  - Convert BE year to AD (e.g. 2567 -> 2024).
-  - idNumber must be 13 digits string.
-  - Return JSON matching GuestData interface.`;
+  const systemInstruction = `คุณคือผู้ช่วยจัดการฟรอนต์รีสอร์ต หน้าที่ของคุณคือดึงข้อมูลจากรูปถ่ายบัตรประชาชนไทยอย่างละเอียด
+  กฎการดึงข้อมูล:
+  1. แปลงปี พ.ศ. เป็น ค.ศ. (เช่น 2530 -> 1987)
+  2. idNumber ต้องเป็นตัวเลข 13 หลัก
+  3. แยก Title (นาย/นาง/นส), firstNameTH, lastNameTH ออกจากกัน
+  4. ดึงข้อมูลที่อยู่ (address) ให้ครบถ้วนที่สุด
+  5. nationality มักเป็น "ไทย"
+  6. occupation ให้คาดเดาจากข้อมูล (ถ้าไม่มีให้ใส่ "รับจ้าง" หรือ "ทั่วไป")`;
 
   try {
     const response = await ai.models.generateContent({
@@ -61,19 +65,39 @@ export const processIDCardOCR = async (base64Image: string): Promise<GuestData> 
       contents: {
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-          { text: "Extract: idNumber, title, firstNameTH, lastNameTH, firstNameEN, lastNameEN, address, dob, issueDate, expiryDate." }
+          { text: "ดึงข้อมูลจากบัตรประชาชนในรูปนี้เป็น JSON ตามโครงสร้างที่กำหนด" }
         ]
       },
       config: {
         systemInstruction,
-        responseMimeType: "application/json"
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            idNumber: { type: Type.STRING },
+            title: { type: Type.STRING },
+            firstNameTH: { type: Type.STRING },
+            lastNameTH: { type: Type.STRING },
+            firstNameEN: { type: Type.STRING },
+            lastNameEN: { type: Type.STRING },
+            address: { type: Type.STRING },
+            dob: { type: Type.STRING, description: 'Format YYYY-MM-DD (AD)' },
+            issueDate: { type: Type.STRING },
+            expiryDate: { type: Type.STRING },
+            nationality: { type: Type.STRING },
+            religion: { type: Type.STRING },
+            occupation: { type: Type.STRING }
+          },
+          required: ['idNumber', 'firstNameTH', 'lastNameTH', 'address']
+        }
       }
     });
 
-    return JSON.parse(response.text || '{}') as GuestData;
+    const result = JSON.parse(response.text || '{}');
+    return result as GuestData;
   } catch (error) {
     console.error("ID OCR Error:", error);
-    throw new Error("Failed to scan ID card. Please try again with a clearer photo.");
+    throw new Error("ไม่สามารถอ่านข้อมูลจากบัตรได้ กรุณาถ่ายรูปให้ชัดเจนขึ้น");
   }
 };
 
